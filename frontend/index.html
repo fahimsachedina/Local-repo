@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LinkedIn Salary Estimator — Valley</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Edit config.js to point at your deployed backend URL -->
+  <script src="config.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+
+    .gradient-text {
+      background: linear-gradient(135deg, #2563eb, #7c3aed);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    @keyframes fadein {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in { animation: fadein 0.45s ease both; }
+
+    @keyframes pulsedot {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.25; }
+    }
+    .pulse-dot { animation: pulsedot 1.4s ease-in-out infinite; }
+
+    .bar-bg {
+      height: 6px; border-radius: 3px; background: #E5E7EB; overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%; border-radius: 3px;
+      transition: width 0.9s cubic-bezier(.4,0,.2,1);
+    }
+    .fill-hi  { background: #16a34a; }
+    .fill-mid { background: #d97706; }
+    .fill-lo  { background: #dc2626; }
+
+    .step { opacity: 0; }
+    .step.show { animation: fadein 0.3s ease both; }
+    .step.done .step-circle { background: #dcfce7; }
+    .step.done .step-dot    { display: none; }
+    .step.done .step-check  { display: block; }
+    .step.active .step-circle { background: #dbeafe; }
+    .step.active .step-dot    { display: block; }
+    .step.active .step-check  { display: none; }
+    .step-dot   { display: none; }
+    .step-check { display: none; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<!-- ─── Header ──────────────────────────────────────────────────── -->
+<header class="bg-white border-b border-gray-100 sticky top-0 z-10">
+  <div class="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <div class="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center">
+        <span class="text-white font-bold text-sm leading-none">V</span>
+      </div>
+      <span class="font-bold text-gray-900 text-sm">Valley</span>
+    </div>
+    <span class="text-xs text-gray-400 font-medium tracking-wide uppercase">Salary Estimator</span>
+  </div>
+</header>
+
+<main class="max-w-3xl mx-auto px-6 py-14">
+
+  <!-- ─── INPUT ──────────────────────────────────────────────────── -->
+  <section id="s-input">
+    <div class="text-center mb-10">
+      <h1 class="text-5xl font-black text-gray-900 leading-tight mb-4">
+        Your profile,<br><span class="gradient-text">priced.</span>
+      </h1>
+      <p class="text-lg text-gray-500 max-w-xl mx-auto leading-relaxed">
+        An AI agent reads your LinkedIn profile, searches live salary databases,
+        and scores you on 9 compensation factors. You get an estimated salary band,
+        your percentile, and a verdict that might be uncomfortable.
+      </p>
+      <p class="mt-3 text-sm text-gray-400">Free &nbsp;·&nbsp; No sign-up &nbsp;·&nbsp; ~90 seconds</p>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-xl mx-auto">
+      <form id="form">
+        <label class="block text-sm font-semibold text-gray-800 mb-1.5">LinkedIn Profile URL</label>
+        <input id="inp-url" type="url"
+          placeholder="https://linkedin.com/in/yourprofile"
+          class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-1"
+        />
+        <p class="text-xs text-gray-400 mb-5">
+          We'll try to read your public profile. If LinkedIn blocks it, paste your text below.
+        </p>
+
+        <button type="button" id="btn-toggle-paste"
+          class="text-sm text-blue-600 font-semibold hover:text-blue-700 flex items-center gap-1.5 mb-3">
+          <svg id="paste-chevron" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+          Paste profile text instead (or as backup)
+        </button>
+
+        <div id="paste-area" class="hidden mb-5">
+          <label class="block text-sm font-semibold text-gray-800 mb-1.5">Profile Text</label>
+          <textarea id="inp-text" rows="7"
+            placeholder="Paste everything visible on your LinkedIn page — headline, About, all experience entries, education. More detail = more accuracy."
+            class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
+          ></textarea>
+        </div>
+
+        <div id="form-error" class="hidden mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600"></div>
+
+        <button type="submit"
+          class="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold py-3.5 px-6 rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
+          Estimate My Salary
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+          </svg>
+        </button>
+      </form>
+    </div>
+
+    <div class="mt-12 grid grid-cols-3 gap-4 max-w-xl mx-auto text-center">
+      <div>
+        <div class="text-3xl font-black text-gray-900">9</div>
+        <div class="text-xs text-gray-500 mt-0.5">factors scored</div>
+      </div>
+      <div>
+        <div class="text-3xl font-black text-gray-900">~90s</div>
+        <div class="text-xs text-gray-500 mt-0.5">to your estimate</div>
+      </div>
+      <div>
+        <div class="text-3xl font-black text-gray-900">free</div>
+        <div class="text-xs text-gray-500 mt-0.5">no account needed</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── LOADING ────────────────────────────────────────────────── -->
+  <section id="s-loading" class="hidden">
+    <div class="text-center mb-8">
+      <h2 class="text-3xl font-black text-gray-900 mb-2">Analyzing your profile</h2>
+      <p class="text-gray-500 text-sm">This takes about 90 seconds. Don't close this tab.</p>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 max-w-xl mx-auto space-y-5">
+      <div class="step show active" id="step-0">
+        <div class="flex items-start gap-3">
+          <div class="step-circle w-5 h-5 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0">
+            <div class="step-dot w-2 h-2 rounded-full bg-blue-500 pulse-dot"></div>
+            <svg class="step-check w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-gray-900">Fetching your LinkedIn profile</p>
+            <p class="text-xs text-gray-400">Reading public profile data</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="step" id="step-1">
+        <div class="flex items-start gap-3">
+          <div class="step-circle w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center mt-0.5 flex-shrink-0">
+            <div class="step-dot w-2 h-2 rounded-full bg-blue-500 pulse-dot"></div>
+            <svg class="step-check w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-gray-400 step-label">Reading your background</p>
+            <p class="text-xs text-gray-400">Extracting title, company, location, scope signals</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="step" id="step-2">
+        <div class="flex items-start gap-3">
+          <div class="step-circle w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center mt-0.5 flex-shrink-0">
+            <div class="step-dot w-2 h-2 rounded-full bg-blue-500 pulse-dot"></div>
+            <svg class="step-check w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-gray-400 step-label">Searching salary databases</p>
+            <p class="text-xs text-gray-400">Querying Levels.fyi, Glassdoor, LinkedIn Salary data</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="step" id="step-3">
+        <div class="flex items-start gap-3">
+          <div class="step-circle w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center mt-0.5 flex-shrink-0">
+            <div class="step-dot w-2 h-2 rounded-full bg-blue-500 pulse-dot"></div>
+            <svg class="step-check w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-gray-400 step-label">Scoring 9 compensation factors</p>
+            <p class="text-xs text-gray-400">Title · location · company tier · scope · skills · narrative quality…</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="step" id="step-4">
+        <div class="flex items-start gap-3">
+          <div class="step-circle w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center mt-0.5 flex-shrink-0">
+            <div class="step-dot w-2 h-2 rounded-full bg-blue-500 pulse-dot"></div>
+            <svg class="step-check w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-gray-400 step-label">Calculating salary band and percentile</p>
+            <p class="text-xs text-gray-400">Benchmarking against market data</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="step" id="step-5">
+        <div class="flex items-start gap-3">
+          <div class="step-circle w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center mt-0.5 flex-shrink-0">
+            <div class="step-dot w-2 h-2 rounded-full bg-blue-500 pulse-dot"></div>
+            <svg class="step-check w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-gray-400 step-label">Writing your verdict</p>
+            <p class="text-xs text-gray-400">The part that gets people</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── PROFILE REQUIRED (LinkedIn blocked) ────────────────────── -->
+  <section id="s-paste-required" class="hidden">
+    <div class="bg-amber-50 border border-amber-200 rounded-2xl p-10 max-w-xl mx-auto text-center">
+      <div class="text-3xl mb-4">🔒</div>
+      <h3 class="text-xl font-bold text-gray-900 mb-2">LinkedIn blocked our request</h3>
+      <p class="text-gray-600 text-sm mb-6">
+        LinkedIn prevents automated access to profile pages. To continue, paste your
+        profile text below — copy everything visible on your LinkedIn page.
+      </p>
+      <button id="btn-go-paste"
+        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl text-sm transition-colors">
+        Paste My Profile Text
+      </button>
+    </div>
+  </section>
+
+  <!-- ─── RESULTS ────────────────────────────────────────────────── -->
+  <section id="s-results" class="hidden fade-in">
+
+    <div class="flex items-start justify-between mb-6 gap-4">
+      <div>
+        <p class="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-0.5">Estimate for</p>
+        <h2 id="r-name" class="text-2xl font-black text-gray-900"></h2>
+        <p id="r-subtitle" class="text-sm text-gray-500 mt-0.5"></p>
+      </div>
+      <button id="btn-reset"
+        class="flex-shrink-0 text-sm font-semibold text-blue-600 border border-blue-200 hover:border-blue-400 hover:text-blue-700 px-4 py-2 rounded-xl transition-colors">
+        Try another profile
+      </button>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+      <div class="sm:col-span-2 bg-white rounded-2xl border border-gray-200 p-7">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Estimated Salary Band</p>
+        <p id="r-range" class="text-4xl font-black text-gray-900 mb-1"></p>
+        <p class="text-xs text-gray-400">Base compensation estimate &nbsp;·&nbsp; US market</p>
+        <p id="r-sources" class="text-xs text-gray-400 mt-3 pt-3 border-t border-gray-100"></p>
+      </div>
+      <div class="bg-white rounded-2xl border border-gray-200 p-7 flex flex-col items-center justify-center">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Percentile</p>
+        <p id="r-percentile" class="text-6xl font-black gradient-text"></p>
+        <p class="text-xs text-gray-400 mt-1 text-center">vs. peers in your role</p>
+      </div>
+    </div>
+
+    <div class="bg-gray-900 rounded-2xl p-6 mb-4">
+      <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">The Verdict</p>
+      <p id="r-verdict" class="text-base font-medium text-white leading-relaxed"></p>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
+      <h3 class="text-sm font-bold text-gray-900 mb-5 uppercase tracking-wide">Compensation Factor Scorecard</h3>
+      <div id="r-factors" class="space-y-5"></div>
+    </div>
+
+    <p class="text-xs text-gray-400 text-center leading-relaxed max-w-lg mx-auto">
+      AI-generated estimate based on publicly available salary data and profile analysis.
+      Actual compensation depends on total comp structure (equity, bonus), specific role details,
+      and negotiation. Use this as a directional benchmark.
+    </p>
+  </section>
+
+</main>
+
+<script>
+const FACTOR_ORDER = [
+  'title_seniority',
+  'geographic_location',
+  'company_tier',
+  'years_experience',
+  'scope_and_impact',
+  'technical_skills',
+  'industry_premium',
+  'education_credentials',
+  'profile_narrative_quality',
+];
+
+const FACTOR_LABELS = {
+  title_seniority:           'Title & Seniority',
+  geographic_location:       'Geographic Location',
+  company_tier:              'Company Tier',
+  years_experience:          'Years of Experience',
+  scope_and_impact:          'Scope & Impact',
+  technical_skills:          'Technical Skills',
+  industry_premium:          'Industry Premium',
+  education_credentials:     'Education & Credentials',
+  profile_narrative_quality: 'Profile Narrative Quality',
+};
+
+// window.API_URL is set by config.js — edit that file to point at your backend.
+const API_BASE = (window.API_URL || '').replace(/\/$/, '');
+
+const sections = ['input','loading','paste-required','results'];
+function show(id) {
+  sections.forEach(s => document.getElementById('s-'+s).classList.add('hidden'));
+  document.getElementById('s-'+id).classList.remove('hidden');
+}
+
+document.getElementById('btn-toggle-paste').addEventListener('click', () => {
+  const area = document.getElementById('paste-area');
+  const icon = document.getElementById('paste-chevron');
+  const open = area.classList.toggle('hidden');
+  icon.style.transform = open ? '' : 'rotate(180deg)';
+});
+
+function openPaste() {
+  show('input');
+  document.getElementById('paste-area').classList.remove('hidden');
+  document.getElementById('paste-chevron').style.transform = 'rotate(180deg)';
+  document.getElementById('inp-text').focus();
+}
+
+document.getElementById('btn-go-paste').addEventListener('click', openPaste);
+document.getElementById('btn-reset').addEventListener('click', () => {
+  show('input');
+  document.getElementById('inp-url').value = '';
+  document.getElementById('inp-text').value = '';
+});
+
+let stepTimers = [];
+const STEP_DELAYS = [0, 5000, 18000, 32000, 55000, 74000];
+
+function startSteps() {
+  for (let i = 0; i < 6; i++) {
+    const el = document.getElementById('step-' + i);
+    el.classList.remove('show','active','done');
+    const label = el.querySelector('.step-label');
+    if (label) label.classList.add('text-gray-400');
+  }
+  document.getElementById('step-0').classList.add('show','active');
+
+  stepTimers = STEP_DELAYS.map((delay, i) => {
+    if (i === 0) return null;
+    return setTimeout(() => {
+      const prev = document.getElementById('step-' + (i - 1));
+      prev.classList.remove('active');
+      prev.classList.add('done');
+      const cur = document.getElementById('step-' + i);
+      cur.classList.add('show', 'active');
+      const label = cur.querySelector('.step-label');
+      if (label) label.classList.remove('text-gray-400');
+    }, delay);
+  });
+}
+
+function clearSteps() {
+  stepTimers.forEach(t => t && clearTimeout(t));
+  stepTimers = [];
+}
+
+function fmt(n) {
+  return n != null ? '$' + Math.round(n / 1000) + 'K' : '—';
+}
+
+function ordinal(n) {
+  const s = ['th','st','nd','rd'];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+function scoreColor(s) {
+  return s >= 7 ? 'fill-hi' : s >= 5 ? 'fill-mid' : 'fill-lo';
+}
+function scoreText(s) {
+  return s >= 7 ? 'text-green-600' : s >= 5 ? 'text-amber-600' : 'text-red-600';
+}
+
+function render(data) {
+  document.getElementById('r-name').textContent = data.name || data.title || 'Your Profile';
+  document.getElementById('r-subtitle').textContent =
+    [data.title, data.company, data.location].filter(Boolean).join(' · ');
+  document.getElementById('r-range').textContent = `${fmt(data.salary_low)} – ${fmt(data.salary_high)}`;
+  document.getElementById('r-sources').textContent =
+    data.salary_data_sources ? 'Data: ' + data.salary_data_sources : '';
+  document.getElementById('r-percentile').textContent = ordinal(data.percentile || 50);
+  document.getElementById('r-verdict').textContent = data.verdict || '';
+
+  const grid = document.getElementById('r-factors');
+  grid.innerHTML = '';
+  FACTOR_ORDER.forEach(key => {
+    const f = (data.factors || {})[key];
+    if (!f) return;
+    const score = f.score || 5;
+    const isKey = key === 'profile_narrative_quality';
+    const wrap = document.createElement('div');
+    if (isKey) wrap.className = 'rounded-xl bg-gray-50 border border-gray-200 p-3';
+    wrap.innerHTML = `
+      <div class="flex items-center justify-between mb-1.5">
+        <div class="flex items-center gap-2">
+          <span class="text-sm ${isKey ? 'font-bold text-gray-900' : 'font-medium text-gray-700'}">
+            ${FACTOR_LABELS[key] || key}
+          </span>
+          ${isKey ? '<span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Key factor</span>' : ''}
+        </div>
+        <span class="text-sm font-bold ${scoreText(score)}">${score}/10</span>
+      </div>
+      <div class="bar-bg mb-1.5">
+        <div class="bar-fill ${scoreColor(score)}" style="width:${score * 10}%"></div>
+      </div>
+      <p class="text-xs text-gray-500">${f.note || ''}</p>
+    `;
+    grid.appendChild(wrap);
+  });
+
+  show('results');
+}
+
+document.getElementById('form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const url  = document.getElementById('inp-url').value.trim();
+  const text = document.getElementById('inp-text').value.trim();
+  const errEl = document.getElementById('form-error');
+
+  if (!url && !text) {
+    errEl.textContent = 'Please enter a LinkedIn URL or paste your profile text.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  errEl.classList.add('hidden');
+  show('loading');
+  startSteps();
+
+  try {
+    const res = await fetch(`${API_BASE}/api/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: url || null, profile_text: text || null }),
+    });
+    const data = await res.json();
+    clearSteps();
+
+    if (res.status === 422 && data.error === 'profile_required') {
+      show('paste-required');
+      return;
+    }
+    if (data.error) {
+      errEl.textContent = data.error;
+      errEl.classList.remove('hidden');
+      show('input');
+      return;
+    }
+    render(data);
+  } catch {
+    clearSteps();
+    document.getElementById('form-error').textContent = 'Something went wrong. Please try again.';
+    document.getElementById('form-error').classList.remove('hidden');
+    show('input');
+  }
+});
+</script>
+</body>
+</html>

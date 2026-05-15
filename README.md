@@ -25,32 +25,82 @@ Paste a LinkedIn URL. An AI agent reads your profile, searches live salary datab
 | **Education & Credentials** | Elite programs add premium at senior levels |
 | **Profile Narrative Quality** | **The key factor.** Quantified achievements vs. job description language |
 
-The profile narrative quality factor is the strongest predictor of whether someone is capturing their full market value. A profile that says "results-oriented leader" scores a 3. One that says "built payments infrastructure processing $2B annually, grew team from 4 to 28" scores a 9. The comp difference is often $80–150K.
+---
 
-## Setup
+## Running locally (monolith mode)
 
-### 1. Install dependencies
+Backend serves the frontend — one command, everything works.
 
 ```bash
 pip install -r requirements.txt
+cp .env.example .env   # add your ANTHROPIC_API_KEY
+python run.py          # → http://localhost:8000
 ```
 
-### 2. Configure your API key
+---
+
+## Deploying: frontend + backend separately
+
+### 1. Deploy the backend
+
+**Option A — Docker (Railway, Fly.io, Render, etc.)**
 
 ```bash
-cp .env.example .env
-# Add your Anthropic API key to .env
+docker build -t salary-estimator .
+docker run -p 8000:8000 \
+  -e ANTHROPIC_API_KEY=your_key \
+  -e ALLOWED_ORIGINS=https://your-frontend.netlify.app \
+  salary-estimator
 ```
 
-Get a key at [console.anthropic.com](https://console.anthropic.com).
+Most platforms (Railway, Render, Fly.io) will auto-detect the `Dockerfile`. Set these environment variables in your platform's dashboard:
 
-### 3. Run
+| Variable | Value |
+|---|---|
+| `ANTHROPIC_API_KEY` | Your Anthropic API key |
+| `ALLOWED_ORIGINS` | Your frontend URL, e.g. `https://your-app.netlify.app` |
+
+**Option B — Run directly on a VPS**
 
 ```bash
-python run.py
+pip install -r requirements.txt
+ANTHROPIC_API_KEY=your_key ALLOWED_ORIGINS=https://your-frontend.netlify.app \
+  uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-Open [http://localhost:8000](http://localhost:8000).
+---
+
+### 2. Deploy the frontend
+
+The standalone frontend lives in `frontend/`. It's two files: `index.html` and `config.js`.
+
+**Before deploying**, edit `frontend/config.js` and set your backend URL:
+
+```js
+window.API_URL = 'https://your-backend.railway.app';
+```
+
+**Option A — Netlify**
+
+1. Drag and drop the `frontend/` folder at [app.netlify.com](https://app.netlify.com) → "Deploy manually"
+2. Done. No build step needed.
+
+Or via CLI:
+```bash
+npx netlify-cli deploy --dir frontend --prod
+```
+
+**Option B — Vercel**
+
+```bash
+npx vercel frontend/
+```
+
+**Option C — GitHub Pages**
+
+Push the `frontend/` folder contents to a `gh-pages` branch, or configure GitHub Pages to serve from the `frontend/` directory.
+
+---
 
 ## Note on LinkedIn scraping
 

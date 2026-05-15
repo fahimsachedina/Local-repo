@@ -1,3 +1,4 @@
+import os
 import pathlib
 
 from fastapi import FastAPI
@@ -11,9 +12,14 @@ from .fetcher import fetch_linkedin_profile
 
 app = FastAPI(title="LinkedIn Salary Estimator")
 
+# ALLOWED_ORIGINS env var: comma-separated list of allowed frontend origins,
+# or "*" (default) to allow all — set this in production to your frontend URL.
+_raw_origins = os.environ.get("ALLOWED_ORIGINS", "*")
+_origins = ["*"] if _raw_origins.strip() == "*" else [o.strip() for o in _raw_origins.split(",")]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
